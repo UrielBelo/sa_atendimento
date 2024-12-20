@@ -1,0 +1,181 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+enum UserRole {
+  ADMINISTRATOR
+  USER
+}
+
+enum EntityType {
+  PREFEITURA
+  CAMARA
+  AGUA
+  PREVIDENCIA
+  SAUDE
+  ENSINO
+  CONSORCIO
+  OUTROS
+}
+
+enum CallOrigin {
+  WHATSAPP
+  PHONE
+  MAIL
+}
+
+enum TicketStatus {
+  OPEN
+  CLOSE
+}
+
+enum TicketMovimentType {
+  PROGRAMACAO
+  AGUARDANDO
+  RETORNO
+  FINALIZACAO
+}
+
+model Entity {
+  id              String            @id @default(uuid()) @db.VarChar(36)
+  type            EntityType
+  shortName       String
+  fullname        String
+
+  clients         EntityClient[]
+}
+
+model EntityClient {
+  id              Int               @id @default(autoincrement())
+  clientId        String            
+  entityId        String
+  dafault         Boolean
+
+  client          Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  entity          Entity            @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId,entityId])
+  @@index([clientId])
+}
+
+model Client {
+  id              String            @id @default(uuid()) @db.VarChar(36)
+  name            String
+  phone           String
+  obs             String?
+
+  entities        EntityClient[]
+  calls           Call[]
+}
+
+model System {
+  systemId        String            @id
+  systemName      String
+}
+
+model Notebook {
+  phoneoremail    String            @id
+  name            String
+
+  calls           Call[]
+}
+
+model Call {
+  id              String            @id @default(uuid()) @db.VarChar(36)
+  senderId        String
+  clientId        String
+  description     String
+  begin           DateTime          @default(now())
+  end             DateTime
+  userId          String
+  origin          CallOrigin
+
+  sender          Notebook          @relation(fields: [senderId], references: [phoneoremail])
+  client          Client            @relation(fields: [clientId], references: [id])
+  user            User              @relation(fields: [userId], references: [id])
+  tickets         Ticket?
+  ticketsMoviment TicketMovement?
+  callMensages    CallMensage[]
+}
+
+model CallMensage {
+  id              String            @id @default(uuid()) @db.VarChar(36)
+  callId          String            
+  message         String
+  sended          Boolean
+  mediaName       String
+  mediaHash       String
+  follow          String?
+  createdAt       DateTime          @default(now())
+
+  call            Call              @relation(fields: [callId], references: [id])
+}
+
+model Ticket {
+  id              String            @id @default(uuid()) @db.VarChar(36)
+  description     String
+  status          TicketStatus      @default(OPEN)
+  openAt          DateTime          @default(now())
+  createdBy       String
+  originCall      String            @unique
+
+  user            User              @relation(fields: [createdBy], references: [id])
+  call            Call              @relation(fields: [originCall], references: [id])
+  ticketMoviments TicketMovement[]
+}
+
+model TicketMovement {
+  id              BigInt            @id @default(autoincrement())
+  ticketId        String
+  description     String
+  userId          String
+  originCall      String            @unique
+  createdAt       DateTime          @default(now())
+  type            TicketMovimentType
+
+  user            User              @relation(fields: [userId], references: [id])
+  call            Call              @relation(fields: [originCall], references: [id])
+  ticket          Ticket            @relation(fields: [ticketId], references: [id])
+}
+
+model InternalProcess {
+  id              BigInt            @id @default(autoincrement())
+  ticketId        String
+  userId          String
+  description     String
+  createdAt       DateTime          @default(now())
+  finishedAt      DateTime?
+
+  user            User              @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id              String            @id @default(uuid()) @db.VarChar(36)
+  username        String            @unique
+  fullname        String
+  nickname        String?
+  passwordHash    String
+  passwordSalt    String
+  createdAt       DateTime          @default(now())
+  lastRequest     DateTime
+  email           String            @unique
+  role            UserRole          @default(USER)
+  systems         String[]
+
+  calls           Call[]
+  tickets         Ticket[]
+  ticketMovments  TicketMovement[]
+  internalProcess InternalProcess[]
+}
