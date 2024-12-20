@@ -1,6 +1,6 @@
 import express, { NextFunction, Response, Request } from 'express';
 import { rateLimit } from 'express-rate-limit'
-import { authRouter } from './routes';
+import { authRouter, homeRouter } from './routes';
 import path from 'path';
 import cors from 'cors';
 import http from 'http'
@@ -33,6 +33,7 @@ app.get('/', (_,res:Response) => {
 })
 
 app.use('/auth', authRouter)
+app.use('/home', homeRouter)
 
 app.get('/ping', (_,res:Response) => {
     res.status(200).send('pong')

@@ -53,7 +53,7 @@ export class LoginService {
         const aesKey = generateRandomHash(16);
         const aesIv = generateRandomHash(16);
 
-        await LoginService.loginSessions.set(sessionHash, {
+        await LoginService.loginSessions.set(usernameHash, {
             createdAt: new Date(),
             expiresAt: expirationDate,
             status: 0,
@@ -144,16 +144,10 @@ export class LoginService {
             requestData.userAgent,
         );
 
-        const cipherSessionHash = aes.encrypt(sessionHash, aesKey, aesIv);
-        const cipherSignToken = aes.encrypt(signToken, aesKey, aesIv);
-        const cipherUserId = aes.encrypt(user?.id || generateSha256(usernameDecipher), aesKey, aesIv);
+        const cipherSessionHash = aes.encrypt(sessionHash,userSession.aesKey,userSession.aesIv);
+        const cipherSignToken = aes.encrypt(signToken,userSession.aesKey,userSession.aesIv);
+        const cipherUserId = aes.encrypt(user?.id || generateSha256(usernameDecipher),userSession.aesKey,userSession.aesIv);
 
-        userSession.aesKey = aesKey;
-        userSession.aesIv = aesIv;
-        userSession.userRole = user?.role || UserRole.ADMINISTRATOR;
-        userSession.userId = user?.id || generateSha256(usernameDecipher);
-
-        await LoginService.loginSessions.update(usernameHash, userSession, NONCE_FIRST_TTL);
         await LoginService.loginSessions.delete(usernameHash);
 
         return {
